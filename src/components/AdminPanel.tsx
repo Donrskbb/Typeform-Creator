@@ -28,7 +28,7 @@ interface Submission {
   submittedAt: string;
 }
 
-type Tab = 'overview' | 'submissions' | 'config' | 'form-builder' | 'themes';
+type Tab = 'overview' | 'submissions' | 'config' | 'form-builder' | 'themes' | 'guide';
 
 export const AdminPanel: React.FC = () => {
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
@@ -657,6 +657,66 @@ COOKIE_SECRET=yourcookiesecret`}
           </div>
         )}
 
+        {activeTab === 'guide' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-2xl font-bold mb-4 text-purple-700">Admin Features Guide</h2>
+              <ul className="list-disc pl-6 space-y-4 text-gray-800">
+                <li>
+                  <strong>View Overview:</strong>
+                  <p className="text-sm mt-1">See a summary of total submissions, number of form questions, and server status at a glance.</p>
+                </li>
+                <li>
+                  <strong>Form Builder:</strong>
+                  <ul className="list-disc pl-6 mt-1 text-sm">
+                    <li>Add new questions to the form (text, email, select, multiline).</li>
+                    <li>Edit existing questions, including type, placeholder, and options.</li>
+                    <li>Delete questions you no longer need.</li>
+                    <li>Reorder questions using the up/down arrows.</li>
+                  </ul>
+                </li>
+                <li>
+                  <strong>Themes:</strong>
+                  <ul className="list-disc pl-6 mt-1 text-sm">
+                    <li>Preview and select from available form themes to change the look and feel instantly.</li>
+                  </ul>
+                </li>
+                <li>
+                  <strong>Submissions:</strong>
+                  <ul className="list-disc pl-6 mt-1 text-sm">
+                    <li>View all form submissions in a sortable table.</li>
+                    <li>See details like name, email, role, company, and submission date.</li>
+                  </ul>
+                </li>
+                <li>
+                  <strong>Configuration:</strong>
+                  <ul className="list-disc pl-6 mt-1 text-sm">
+                    <li>View server settings (port, environment).</li>
+                    <li>Edit the <code>.env</code> file directly from the admin panel (change API keys, credentials, etc.).</li>
+                    <li>See example environment variable setup for all integrations.</li>
+                  </ul>
+                </li>
+                <li>
+                  <strong>Authentication:</strong>
+                  <ul className="list-disc pl-6 mt-1 text-sm">
+                    <li>Log in securely with your admin credentials.</li>
+                    <li>Log out at any time to protect access.</li>
+                  </ul>
+                </li>
+                <li>
+                  <strong>Error Handling & Feedback:</strong>
+                  <ul className="list-disc pl-6 mt-1 text-sm">
+                    <li>See clear error messages if API calls fail or authentication expires.</li>
+                    <li>Get confirmation when changes are saved successfully.</li>
+                  </ul>
+                </li>
+              </ul>
+              <div className="mt-8 text-sm text-gray-600">
+                <strong>Tip:</strong> All changes you make as an admin are instantly reflected for users filling out the form. Use the navigation tabs above to explore each feature!
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Question Modal */}
