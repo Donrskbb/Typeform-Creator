@@ -2,6 +2,7 @@ import express from 'express';
 import { submitToDiscord } from '../services/discord.js';
 import { submitToMongoDB } from '../services/mongodb.js';
 import { submitToEmail } from '../services/email.js';
+import { requireAdmin } from './auth.js';
 
 const router = express.Router();
 
@@ -63,8 +64,8 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Get all submissions (from MongoDB if enabled)
-router.get('/', async (req, res) => {
+// Protect all GET endpoints (admin panel fetches submissions)
+router.get('/', requireAdmin, async (req, res) => {
   try {
     const enabledDestinations = (process.env.ENABLED_DESTINATIONS || '').split(',').map(d => d.trim());
     

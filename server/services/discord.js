@@ -15,7 +15,7 @@ export async function submitToDiscord(formData) {
     })),
     timestamp: new Date().toISOString(),
     footer: {
-      text: 'Typeform Clone'
+      text: 'Websubmission'
     }
   };
 

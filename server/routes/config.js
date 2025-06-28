@@ -1,8 +1,12 @@
 import express from 'express';
+import fs from 'fs';
+import path from 'path';
+import dotenv from 'dotenv';
+import { requireAdmin } from './auth.js';
 
 const router = express.Router();
 
-router.get('/', (req, res) => {
+router.get('/', requireAdmin, (req, res) => {
   const config = {
     destinations: {
       discord: {
@@ -25,6 +29,29 @@ router.get('/', (req, res) => {
   };
 
   res.json(config);
+});
+
+// New: Get .env file content
+router.get('/env', requireAdmin, (req, res) => {
+  const envPath = path.join(process.cwd(), '.env');
+  fs.readFile(envPath, 'utf8', (err, data) => {
+    if (err) return res.status(500).json({ error: 'Failed to read .env file' });
+    res.json({ content: data });
+  });
+});
+
+// New: Update .env file content
+router.post('/env', requireAdmin, (req, res) => {
+  const envPath = path.join(process.cwd(), '.env');
+  const { content } = req.body;
+  if (typeof content !== 'string') {
+    return res.status(400).json({ error: 'Invalid content' });
+  }
+  fs.writeFile(envPath, content, 'utf8', (err) => {
+    if (err) return res.status(500).json({ error: 'Failed to write .env file' });
+    dotenv.config({ path: envPath });
+    res.json({ success: true });
+  });
 });
 
 export default router;

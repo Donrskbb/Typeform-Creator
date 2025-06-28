@@ -74,13 +74,14 @@ export const FormView: React.FC = () => {
     const defaultConfig: FormConfig = {
       id: 'default',
       title: 'Contact Form',
-      description: 'We\'d love to hear from you!',
+      description: "We'd love to hear from you!",
       questions: defaultQuestions,
       theme: defaultThemes[0],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
     setFormConfig(defaultConfig);
+    localStorage.setItem('formConfig', JSON.stringify(defaultConfig)); // Ensure localStorage is set
   };
 
   const handleNext = useCallback(async (value: string) => {
@@ -110,7 +111,7 @@ export const FormView: React.FC = () => {
         const result = await response.json();
         setSubmissionResult(result);
         setIsCompleted(true);
-        localStorage.removeItem('formConfig'); // optional: clear saved form
+        // localStorage.removeItem('formConfig'); // Removed to keep admin-edited questions in sync
       } catch (error) {
         console.error('Submission error:', error);
         setSubmissionResult({
@@ -178,14 +179,16 @@ export const FormView: React.FC = () => {
                 <div className={`${theme.cardBackground} rounded-lg p-6 text-left`}>
                   <h3 className="text-lg font-semibold mb-4">Submission Status:</h3>
                   <div className="space-y-2">
-                    {Object.entries(submissionResult.destinations).map(([dest, status]: [string, any]) => (
-                      <div key={dest} className="flex items-center justify-between">
-                        <span className="capitalize">{dest}:</span>
-                        <span className={status.success ? 'text-green-400' : 'text-red-400'}>
-                          {status.success ? '✓ Success' : '✗ Failed'}
-                        </span>
-                      </div>
-                    ))}
+                    {Object.entries(submissionResult.destinations as Record<string, { success: boolean }>).map(
+                      ([dest, status]) => (
+                        <div key={dest} className="flex items-center justify-between">
+                          <span className="capitalize">{dest}:</span>
+                          <span className={status.success ? 'text-green-400' : 'text-red-400'}>
+                            {status.success ? '✓ Success' : '✗ Failed'}
+                          </span>
+                        </div>
+                      )
+                    )}
                   </div>
                 </div>
               )}
@@ -249,9 +252,11 @@ export const FormView: React.FC = () => {
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && e.ctrlKey) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
                   handleNext(inputValue);
                 }
+                // Shift+Enter inserts newline by default
               }}
             />
           ) : (

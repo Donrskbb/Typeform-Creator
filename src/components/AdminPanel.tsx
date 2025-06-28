@@ -31,6 +31,9 @@ interface Submission {
 type Tab = 'overview' | 'submissions' | 'config' | 'form-builder' | 'themes';
 
 export const AdminPanel: React.FC = () => {
+  const [authenticated, setAuthenticated] = useState<boolean | null>(null);
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [config, setConfig] = useState<ConfigData | null>(null);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,33 +42,60 @@ export const AdminPanel: React.FC = () => {
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const [showQuestionModal, setShowQuestionModal] = useState(false);
 
+  // Check authentication on mount
   useEffect(() => {
-    fetchConfig();
-    fetchSubmissions();
-    loadFormConfig();
+    fetch('http://localhost:3001/api/auth/me', { credentials: 'include' })
+      .then(res => res.json())
+      .then(data => setAuthenticated(!!data.authenticated))
+      .catch(() => setAuthenticated(false));
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'form-builder') {
+      loadFormConfig();
+    }
+  }, [activeTab]);
+
+  // Load data after authentication
+  useEffect(() => {
+    if (authenticated) {
+      setLoading(true);
+      Promise.all([
+        fetchConfig().catch((err) => {
+          if (err && err.status === 401) setAuthenticated(false);
+        }),
+        fetchSubmissions().catch((err) => {
+          if (err && err.status === 401) setAuthenticated(false);
+        })
+      ])
+        .catch((err) => console.error('Failed to load admin data:', err))
+        .finally(() => setLoading(false));
+    }
+  }, [authenticated]);
 
   const fetchConfig = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/config');
+      const response = await fetch('http://localhost:3001/api/config', { credentials: 'include' });
+      if (response.status === 401) throw { status: 401 };
       const data = await response.json();
       setConfig(data);
     } catch (error) {
+      if (error.status === 401) setAuthenticated(false);
       console.error('Failed to fetch config:', error);
     }
   };
 
   const fetchSubmissions = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/submissions');
+      const response = await fetch('http://localhost:3001/api/submissions', { credentials: 'include' });
+      if (response.status === 401) throw { status: 401 };
       const data = await response.json();
       if (data.success) {
         setSubmissions(data.submissions);
       }
     } catch (error) {
+      if (error.status === 401) setAuthenticated(false);
       console.error('Failed to fetch submissions:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -96,6 +126,20 @@ export const AdminPanel: React.FC = () => {
   };
 
   const addQuestion = () => {
+    // Ensure formConfig is initialized
+    if (!formConfig) {
+      const defaultConfig: FormConfig = {
+        id: 'default',
+        title: 'Contact Form',
+        description: "We'd love to hear from you!",
+        questions: [],
+        theme: defaultThemes[0],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      setFormConfig(defaultConfig);
+      localStorage.setItem('formConfig', JSON.stringify(defaultConfig));
+    }
     setEditingQuestion({
       id: `question_${Date.now()}`,
       type: 'text',
@@ -107,6 +151,20 @@ export const AdminPanel: React.FC = () => {
   };
 
   const editQuestion = (question: Question) => {
+    // Ensure formConfig is initialized
+    if (!formConfig) {
+      const defaultConfig: FormConfig = {
+        id: 'default',
+        title: 'Contact Form',
+        description: "We'd love to hear from you!",
+        questions: [],
+        theme: defaultThemes[0],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      setFormConfig(defaultConfig);
+      localStorage.setItem('formConfig', JSON.stringify(defaultConfig));
+    }
     setEditingQuestion({ ...question });
     setShowQuestionModal(true);
   };
@@ -166,12 +224,81 @@ export const AdminPanel: React.FC = () => {
     });
   };
 
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError(null);
+    const res = await fetch('http://localhost:3001/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(loginForm),
+    });
+    if (res.ok) {
+      setAuthenticated(true);
+    } else {
+      setLoginError('Invalid username or password');
+    }
+  };
+
+  const handleLogout = async () => {
+    await fetch('http://localhost:3001/api/auth/logout', {
+      method: 'POST',
+      credentials: 'include',
+    });
+    setAuthenticated(false);
+  };
+
+  if (authenticated === false) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <form onSubmit={handleLogin} className="bg-white p-8 rounded shadow max-w-xs w-full">
+          <h2 className="text-xl font-bold mb-6 text-center">Admin Login</h2>
+          <input
+            type="text"
+            placeholder="Username"
+            value={loginForm.username}
+            onChange={e => setLoginForm(f => ({ ...f, username: e.target.value }))}
+            className="w-full p-2 border rounded mb-4"
+            autoFocus
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            value={loginForm.password}
+            onChange={e => setLoginForm(f => ({ ...f, password: e.target.value }))}
+            className="w-full p-2 border rounded mb-4"
+          />
+          {loginError && <div className="text-red-500 text-sm mb-2">{loginError}</div>}
+          <button type="submit" className="w-full bg-purple-600 text-white py-2 rounded hover:bg-purple-700">Login</button>
+        </form>
+      </div>
+    );
+  }
+
+  if (authenticated === null) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-gray-600">Checking authentication...</div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-purple-600" />
           <p className="text-gray-600">Loading admin panel...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!config) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-red-500 text-center">
+          Failed to load admin config. Please log in again or check your server.
         </div>
       </div>
     );
@@ -195,11 +322,10 @@ export const AdminPanel: React.FC = () => {
               <h1 className="text-2xl font-bold text-gray-900">Admin Panel</h1>
             </div>
             <button
-              onClick={refresh}
-              className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              onClick={handleLogout}
+              className="flex items-center px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition-colors"
             >
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Refresh
+              Logout
             </button>
           </div>
         </div>
@@ -251,7 +377,7 @@ export const AdminPanel: React.FC = () => {
                   <Edit3 className="w-8 h-8 text-green-600" />
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Form Questions</p>
-                    <p className="text-2xl font-bold text-gray-900">{formConfig?.questions.length || 0}</p>
+                    <p className="text-2xl font-bold text-gray-900">{formConfig?.questions.length || "Go to Form Builder"}</p>
                   </div>
                 </div>
               </div>
@@ -484,6 +610,9 @@ export const AdminPanel: React.FC = () => {
               </div>
             </div>
 
+            {/* Editable .env section */}
+            <EnvEditor />
+
             <div className="bg-white rounded-lg shadow">
               <div className="px-6 py-4 border-b border-gray-200">
                 <h3 className="text-lg font-medium text-gray-900">Environment Setup</h3>
@@ -495,21 +624,32 @@ export const AdminPanel: React.FC = () => {
                     in your project root with the following variables:
                   </p>
                   <pre className="text-xs bg-gray-800 text-green-400 p-4 rounded overflow-x-auto">
-                    {`# Discord Configuration
-                    DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/your-webhook-url
+                    {`# Server Configuration
+PORT=3001
 
-                    # MongoDB Configuration  
-                    MONGODB_URI=mongodb://localhost:27017/typeform-creator
+# Discord Webhook Configuration
+DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/your-webhook-url
 
-                    # Email Configuration
-                    EMAIL_HOST=smtp.gmail.com
-                    EMAIL_PORT=587
-                    EMAIL_USER=your-email@gmail.com
-                    EMAIL_PASS=your-app-password
-                    EMAIL_TO=admin@yourcompany.com
+# MongoDB Configuration
+MONGODB_URI=mongodb://localhost:27017/typeform-creator
+MONGODB_DATABASE=typeform-creator
 
-                    # Enable destinations (comma-separated)
-                    ENABLED_DESTINATIONS=discord,mongodb,email`}
+# Email Configuration (using Gmail as example)
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USER=your-email@gmail.com
+EMAIL_PASS=your-app-password
+EMAIL_FROM=your-email@gmail.com
+EMAIL_TO=admin@yourcompany.com
+
+# Submission Destinations (comma-separated: discord,mongodb,email)
+ENABLED_DESTINATIONS=discord,mongodb,email
+
+# Admin Credentials
+# Create cookie secret using => node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+ADMIN_USERNAME=youradminusername
+ADMIN_PASSWORD=youradminpassword
+COOKIE_SECRET=yourcookiesecret`}
                   </pre>
                 </div>
               </div>
@@ -524,26 +664,58 @@ export const AdminPanel: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white p-6 rounded-lg w-full max-w-xl shadow-lg">
             <h2 className="text-xl font-semibold mb-4">Edit Question</h2>
+            <label className="block mb-2 text-sm font-medium text-gray-700">Type</label>
+            <select
+              value={editingQuestion.type}
+              onChange={e => {
+                const type = e.target.value as Question['type'];
+                setEditingQuestion({
+                  ...editingQuestion,
+                  type,
+                  options: type === 'select' ? ['Option 1', 'Option 2'] : undefined,
+                });
+              }}
+              className="w-full p-2 border rounded mb-4"
+            >
+              <option value="text">Text</option>
+              <option value="email">Email</option>
+              <option value="select">Select</option>
+              <option value="multiline">Multiline</option>
+            </select>
             <label className="block mb-2 text-sm font-medium text-gray-700">Question</label>
             <input
               type="text"
               value={editingQuestion.question}
-              onChange={(e) => setEditingQuestion({ ...editingQuestion, question: e.target.value })}
+              onChange={e => setEditingQuestion({ ...editingQuestion, question: e.target.value })}
               className="w-full p-2 border rounded mb-4"
             />
             <label className="block mb-2 text-sm font-medium text-gray-700">Placeholder</label>
             <input
               type="text"
               value={editingQuestion.placeholder}
-              onChange={(e) => setEditingQuestion({ ...editingQuestion, placeholder: e.target.value })}
+              onChange={e => setEditingQuestion({ ...editingQuestion, placeholder: e.target.value })}
               className="w-full p-2 border rounded mb-4"
             />
+            {editingQuestion.type === 'select' && (
+              <>
+                <label className="block mb-2 text-sm font-medium text-gray-700">Options (comma separated)</label>
+                <input
+                  type="text"
+                  value={editingQuestion.options?.join(', ') || ''}
+                  onChange={e => setEditingQuestion({
+                    ...editingQuestion,
+                    options: e.target.value.split(',').map(opt => opt.trim()).filter(Boolean),
+                  })}
+                  className="w-full p-2 border rounded mb-4"
+                />
+              </>
+            )}
             <div className="flex items-center justify-between">
               <label className="flex items-center">
                 <input
                   type="checkbox"
                   checked={editingQuestion.required}
-                  onChange={(e) => setEditingQuestion({ ...editingQuestion, required: e.target.checked })}
+                  onChange={e => setEditingQuestion({ ...editingQuestion, required: e.target.checked })}
                   className="mr-2"
                 />
                 Required
@@ -551,7 +723,8 @@ export const AdminPanel: React.FC = () => {
               <div className="space-x-2">
                 <button
                   onClick={saveQuestion}
-                  className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 flex items-center gap-2"
+                  disabled={!editingQuestion.question || (editingQuestion.type === 'select' && (!editingQuestion.options || editingQuestion.options.length === 0))}
+                  className={`bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 flex items-center gap-2 ${(!editingQuestion.question || (editingQuestion.type === 'select' && (!editingQuestion.options || editingQuestion.options.length === 0))) ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <Save className="w-4 h-4" />
                   Save
@@ -569,6 +742,91 @@ export const AdminPanel: React.FC = () => {
               </div>
             </div>
           </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const EnvEditor: React.FC = () => {
+  const [envContent, setEnvContent] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    if (!editing) {
+      setLoading(true);
+      fetch('http://localhost:3001/api/config/env', { credentials: 'include' })
+        .then(res => res.json())
+        .then(data => {
+          setEnvContent(data.content || '');
+          setLoading(false);
+        })
+        .catch(() => {
+          setError('Failed to load .env file');
+          setLoading(false);
+        });
+    }
+  }, [editing]);
+
+  const handleSave = async () => {
+    setLoading(true);
+    setError(null);
+    setSuccess(false);
+    const res = await fetch('http://localhost:3001/api/config/env', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ content: envContent }),
+    });
+    if (res.ok) {
+      setSuccess(true);
+      setEditing(false);
+    } else {
+      setError('Failed to save .env file');
+    }
+    setLoading(false);
+  };
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-lg shadow p-6 my-4 text-center text-gray-500">Loading .env file...</div>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-lg shadow p-6 my-4">
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-lg font-medium text-gray-900">Edit .env File</h3>
+        {!editing && (
+          <button
+            className="bg-purple-600 text-white px-4 py-1 rounded hover:bg-purple-700"
+            onClick={() => setEditing(true)}
+          >Edit</button>
+        )}
+      </div>
+      {error && <div className="text-red-500 mb-2">{error}</div>}
+      {success && <div className="text-green-600 mb-2">.env file saved successfully!</div>}
+      <textarea
+        className="w-full h-64 border rounded p-2 font-mono text-xs bg-gray-50"
+        value={envContent}
+        onChange={e => setEnvContent(e.target.value)}
+        disabled={!editing}
+      />
+      {editing && (
+        <div className="flex gap-2 mt-2">
+          <button
+            className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
+            onClick={handleSave}
+            disabled={loading}
+          >Save</button>
+          <button
+            className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400"
+            onClick={() => setEditing(false)}
+            disabled={loading}
+          >Cancel</button>
         </div>
       )}
     </div>
