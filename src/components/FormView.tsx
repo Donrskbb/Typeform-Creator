@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useCallback, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { Sparkles, AlertCircle, CheckCircle } from 'lucide-react';
+import { AlertCircle, CheckCircle } from 'lucide-react';
 import { Question, FormState, FormConfig, defaultThemes } from '../types';
 import { QuestionCard } from './QuestionCard';
 import { ProgressBar } from './ProgressBar';

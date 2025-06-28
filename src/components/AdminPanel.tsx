@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import {
   Settings, Database, Mail, MessageSquare, Users, ArrowLeft, RefreshCw, CheckCircle, XCircle,
-  Edit3, Plus, Trash2, Eye, Palette, Save, X
+  Edit3, Plus, Trash2, Eye, Palette, Save, X, Github, Moon, Sun, Sparkles
 } from 'lucide-react';
 import { Question, FormConfig, FormTheme, defaultThemes } from '../types';
+import { apiFetch } from '../utils/api';
 
 interface ConfigData {
   destinations: {
@@ -28,7 +29,7 @@ interface Submission {
   submittedAt: string;
 }
 
-type Tab = 'overview' | 'submissions' | 'config' | 'form-builder' | 'themes' | 'guide';
+type Tab = 'overview' | 'submissions' | 'config' | 'form-builder' | 'themes' | 'guide' | 'whatsnew';
 
 export const AdminPanel: React.FC = () => {
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
@@ -41,10 +42,16 @@ export const AdminPanel: React.FC = () => {
   const [formConfig, setFormConfig] = useState<FormConfig | null>(null);
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const [showQuestionModal, setShowQuestionModal] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('adminDarkMode') === 'true';
+    }
+    return false;
+  });
 
   // Check authentication on mount
   useEffect(() => {
-    fetch('http://localhost:3001/api/auth/me', { credentials: 'include' })
+    apiFetch('/api/auth/me', { credentials: 'include' })
       .then(res => res.json())
       .then(data => setAuthenticated(!!data.authenticated))
       .catch(() => setAuthenticated(false));
@@ -75,26 +82,31 @@ export const AdminPanel: React.FC = () => {
 
   const fetchConfig = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/config', { credentials: 'include' });
+      const response = await apiFetch('/api/config', { credentials: 'include' });
       if (response.status === 401) throw { status: 401 };
       const data = await response.json();
       setConfig(data);
     } catch (error) {
-      if (error.status === 401) setAuthenticated(false);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if (typeof error === 'object' && error !== null && 'status' in error && (error as any).status === 401) setAuthenticated(false);
       console.error('Failed to fetch config:', error);
     }
   };
 
   const fetchSubmissions = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/submissions', { credentials: 'include' });
-      if (response.status === 401) throw { status: 401 };
+      const response = await apiFetch('/api/submissions', { credentials: 'include' });
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Submissions fetch error:', response.status, errorText);
+        if (response.status === 401) setAuthenticated(false);
+        return;
+      }
       const data = await response.json();
       if (data.success) {
         setSubmissions(data.submissions);
       }
     } catch (error) {
-      if (error.status === 401) setAuthenticated(false);
       console.error('Failed to fetch submissions:', error);
     }
   };
@@ -117,12 +129,6 @@ export const AdminPanel: React.FC = () => {
     };
     localStorage.setItem('formConfig', JSON.stringify(updatedConfig));
     setFormConfig(updatedConfig);
-  };
-
-  const refresh = () => {
-    setLoading(true);
-    fetchConfig();
-    fetchSubmissions();
   };
 
   const addQuestion = () => {
@@ -227,7 +233,7 @@ export const AdminPanel: React.FC = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError(null);
-    const res = await fetch('http://localhost:3001/api/auth/login', {
+    const res = await apiFetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -241,12 +247,22 @@ export const AdminPanel: React.FC = () => {
   };
 
   const handleLogout = async () => {
-    await fetch('http://localhost:3001/api/auth/logout', {
+    await apiFetch('/api/auth/logout', {
       method: 'POST',
       credentials: 'include',
     });
     setAuthenticated(false);
   };
+
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('adminDarkMode', 'true');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('adminDarkMode', 'false');
+    }
+  }, [darkMode]);
 
   if (authenticated === false) {
     return (
@@ -305,51 +321,74 @@ export const AdminPanel: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className={`min-h-screen transition-colors ${darkMode ? 'bg-gray-900 text-gray-100' : 'bg-gray-50 text-gray-900'}`}>
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
+      <div className={`shadow-sm border-b transition-colors ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-b'}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center space-x-4">
               <a
                 href="/"
-                className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
+                className={`flex items-center transition-colors ${darkMode ? 'text-gray-300 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}
               >
                 <ArrowLeft className="w-5 h-5 mr-2" />
                 Back to Form
               </a>
-              <div className="h-6 border-l border-gray-300"></div>
-              <h1 className="text-2xl font-bold text-gray-900">Admin Panel</h1>
+              <div className={`h-6 border-l ${darkMode ? 'border-gray-700' : 'border-gray-300'}`}></div>
+              <h1 className={`text-2xl font-bold transition-colors ${darkMode ? 'text-gray-100' : 'text-gray-900'}`}>Admin Panel</h1>
             </div>
-            <button
-              onClick={handleLogout}
-              className="flex items-center px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition-colors"
-            >
-              Logout
-            </button>
+            <div className="flex items-center space-x-4 ml-auto">
+              <a
+                href="https://github.com/Donrskbb/Typeform-Creator/tree/dev"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`flex items-center px-4 py-2 rounded-lg transition-colors ${darkMode ? 'bg-gray-700 text-gray-100 hover:bg-gray-600' : 'bg-gray-300 text-gray-800 hover:bg-gray-400'}`}
+                title="View on GitHub"
+              >
+                <Github className="w-6 h-6"/>
+              </a>
+              <button
+                onClick={() => setDarkMode(d => !d)}
+                className={`flex items-center px-3 py-2 rounded-lg transition-colors ${darkMode ? 'bg-gray-700 text-gray-100 hover:bg-gray-600' : 'bg-gray-300 text-gray-800 hover:bg-gray-400'}`}
+                title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                aria-label="Toggle dark mode"
+              >
+                {darkMode ? <Sun className="w-6 h-6" /> : <Moon className="w-6 h-6" />}
+              </button>
+              <button
+                onClick={handleLogout}
+                className={`flex items-center px-4 py-2 rounded-lg transition-colors ${darkMode ? 'bg-gray-700 text-gray-100 hover:bg-gray-600' : 'bg-gray-300 text-gray-800 hover:bg-gray-400'}`}
+              >
+                Logout
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Navigation */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="flex space-x-8 border-b border-gray-200 mb-8 overflow-x-auto">
-          {[
+        <div className={`flex space-x-8 border-b mb-8 overflow-x-auto transition-colors ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+          {([
             { id: 'overview', label: 'Overview', icon: Settings },
             { id: 'form-builder', label: 'Form Builder', icon: Edit3 },
             { id: 'themes', label: 'Themes', icon: Palette },
             { id: 'submissions', label: 'Submissions', icon: Users },
             { id: 'config', label: 'Configuration', icon: Database },
             { id: 'guide', label: 'Guide', icon: Eye },
-          ].map(({ id, label, icon: Icon }) => (
+            { id: 'whatsnew', label: "What's New", icon: Sparkles },
+          ]).map(({ id, label, icon: Icon }) => (
             <button
               key={id}
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              onClick={() => setActiveTab(id as any)}
+              onClick={() => setActiveTab(id as Tab)}
               className={`flex items-center px-4 py-2 border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === id
-                  ? 'border-purple-600 text-purple-600'
-                  : 'border-transparent text-gray-600 hover:text-gray-900'
+                  ? darkMode
+                    ? 'border-purple-400 text-purple-300'
+                    : 'border-purple-600 text-purple-600'
+                  : darkMode
+                    ? 'border-transparent text-gray-300 hover:text-white'
+                    : 'border-transparent text-gray-600 hover:text-gray-900'
               }`}
             >
               <Icon className="w-5 h-5 mr-2" />
@@ -360,33 +399,31 @@ export const AdminPanel: React.FC = () => {
 
         {/* Content */}
         {activeTab === 'overview' && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-white rounded-lg shadow p-6">
+          <div className={`space-y-6 ${darkMode ? '' : ''}`}>
+            <div className={`grid grid-cols-1 md:grid-cols-3 gap-6`}>
+              <div className={`${darkMode ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-900'} rounded-lg shadow p-6`}>
                 <div className="flex items-center">
                   <Users className="w-8 h-8 text-blue-600" />
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Total Submissions</p>
-                    <p className="text-2xl font-bold text-gray-900">{submissions.length}</p>
+                    <p className={`text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Total Submissions</p>
+                    <p className={`text-2xl font-bold ${darkMode ? 'text-gray-100' : 'text-gray-900'}`}>{submissions.length}</p>
                   </div>
                 </div>
               </div>
-
-              <div className="bg-white rounded-lg shadow p-6">
+              <div className={`${darkMode ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-900'} rounded-lg shadow p-6`}>
                 <div className="flex items-center">
                   <Edit3 className="w-8 h-8 text-green-600" />
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Form Questions</p>
-                    <p className="text-2xl font-bold text-gray-900">{formConfig?.questions.length || "Go to Form Builder"}</p>
+                    <p className={`text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Form Questions</p>
+                    <p className={`text-2xl font-bold ${darkMode ? 'text-gray-100' : 'text-gray-900'}`}>{formConfig?.questions.length || "Go to Form Builder"}</p>
                   </div>
                 </div>
               </div>
-
-              <div className="bg-white rounded-lg shadow p-6">
+              <div className={`${darkMode ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-900'} rounded-lg shadow p-6`}>
                 <div className="flex items-center">
                   <Database className="w-8 h-8 text-purple-600" />
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Server Status</p>
+                    <p className={`text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Server Status</p>
                     <p className="text-2xl font-bold text-green-600">Online</p>
                   </div>
                 </div>
@@ -394,9 +431,9 @@ export const AdminPanel: React.FC = () => {
             </div>
 
             {/* Destination Status */}
-            <div className="bg-white rounded-lg shadow">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-medium text-gray-900">Destination Status</h3>
+            <div className={`${darkMode ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-900'} rounded-lg shadow`}>
+              <div className={`px-6 py-4 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                <h3 className={`text-lg font-medium ${darkMode ? 'text-gray-100' : 'text-gray-900'}`}>Destination Status</h3>
               </div>
               <div className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -437,9 +474,9 @@ export const AdminPanel: React.FC = () => {
 
         {activeTab === 'form-builder' && (
           <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow">
-              <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-                <h3 className="text-lg font-medium text-gray-900">Form Questions</h3>
+            <div className={`${darkMode ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-900'} rounded-lg shadow`}>
+              <div className={`px-6 py-4 border-b flex justify-between items-center ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}> 
+                <h3 className={`text-lg font-medium ${darkMode ? 'text-gray-100' : 'text-gray-900'}`}>Form Questions</h3>
                 <button
                   onClick={addQuestion}
                   className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
@@ -450,15 +487,15 @@ export const AdminPanel: React.FC = () => {
               </div>
               <div className="p-6">
                 {formConfig?.questions.map((question, index) => (
-                  <div key={question.id} className="flex items-center justify-between p-4 border rounded-lg mb-4">
+                  <div key={question.id} className={`flex items-center justify-between p-4 border rounded-lg mb-4 ${darkMode ? 'border-gray-700 bg-gray-900 text-gray-100' : 'border-gray-200 bg-white text-gray-900'}`}> 
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <h4 className="font-medium">{question.question}</h4>
                         {question.required && <span className="text-red-500 text-sm">*</span>}
                       </div>
-                      <p className="text-sm text-gray-600 capitalize">Type: {question.type}</p>
+                      <p className={`text-sm capitalize ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Type: {question.type}</p>
                       {question.options && (
-                        <p className="text-sm text-gray-500">Options: {question.options.join(', ')}</p>
+                        <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Options: {question.options.join(', ')}</p>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
@@ -466,16 +503,12 @@ export const AdminPanel: React.FC = () => {
                         onClick={() => moveQuestion(question.id, 'up')}
                         disabled={index === 0}
                         className="p-2 text-gray-400 hover:text-gray-600 disabled:opacity-50"
-                      >
-                        ↑
-                      </button>
+                      >↑</button>
                       <button
                         onClick={() => moveQuestion(question.id, 'down')}
                         disabled={index === formConfig.questions.length - 1}
                         className="p-2 text-gray-400 hover:text-gray-600 disabled:opacity-50"
-                      >
-                        ↓
-                      </button>
+                      >↓</button>
                       <button
                         onClick={() => editQuestion(question)}
                         className="p-2 text-blue-600 hover:text-blue-800"
@@ -498,9 +531,9 @@ export const AdminPanel: React.FC = () => {
 
         {activeTab === 'themes' && (
           <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-medium text-gray-900">Choose Theme</h3>
+            <div className={`${darkMode ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-900'} rounded-lg shadow`}>
+              <div className={`px-6 py-4 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}> 
+                <h3 className={`text-lg font-medium ${darkMode ? 'text-gray-100' : 'text-gray-900'}`}>Choose Theme</h3>
               </div>
               <div className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -508,7 +541,11 @@ export const AdminPanel: React.FC = () => {
                     <div
                       key={theme.id}
                       className={`relative border-2 rounded-lg overflow-hidden cursor-pointer transition-all ${
-                        formConfig?.theme.id === theme.id ? 'border-purple-600 ring-2 ring-purple-200' : 'border-gray-200 hover:border-gray-300'
+                        formConfig?.theme.id === theme.id
+                          ? 'border-purple-600 ring-2 ring-purple-200'
+                          : darkMode
+                            ? 'border-gray-700 hover:border-gray-500'
+                            : 'border-gray-200 hover:border-gray-300'
                       }`}
                       onClick={() => updateTheme(theme)}
                     >
@@ -533,49 +570,29 @@ export const AdminPanel: React.FC = () => {
         )}
 
         {activeTab === 'submissions' && (
-          <div className="bg-white rounded-lg shadow">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900">Recent Submissions</h3>
+          <div className={`${darkMode ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-900'} rounded-lg shadow`}>
+            <div className={`px-6 py-4 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}> 
+              <h3 className={`text-lg font-medium ${darkMode ? 'text-gray-100' : 'text-gray-900'}`}>Recent Submissions</h3>
             </div>
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className={`min-w-full divide-y ${darkMode ? 'divide-gray-700' : 'divide-gray-200'}`}> 
+                <thead className={darkMode ? 'bg-gray-900' : 'bg-gray-50'}>
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Name
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Email
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Role
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Company
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Submitted
-                    </th>
+                    <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Name</th>
+                    <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Email</th>
+                    <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Role</th>
+                    <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Company</th>
+                    <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Submitted</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className={`${darkMode ? 'bg-gray-800 divide-gray-700' : 'bg-white divide-gray-200'}`}>
                   {submissions.map((submission) => (
-                    <tr key={submission._id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {submission.name || 'N/A'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {submission.email || 'N/A'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {submission.role || 'N/A'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {submission.company || 'N/A'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(submission.submittedAt).toLocaleDateString()}
-                      </td>
+                    <tr key={submission._id} className={darkMode ? 'hover:bg-gray-900' : 'hover:bg-gray-50'}>
+                      <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${darkMode ? 'text-gray-100' : 'text-gray-900'}`}>{submission.name || 'N/A'}</td>
+                      <td className={`px-6 py-4 whitespace-nowrap text-sm ${darkMode ? 'text-gray-300' : 'text-gray-500'}`}>{submission.email || 'N/A'}</td>
+                      <td className={`px-6 py-4 whitespace-nowrap text-sm ${darkMode ? 'text-gray-300' : 'text-gray-500'}`}>{submission.role || 'N/A'}</td>
+                      <td className={`px-6 py-4 whitespace-nowrap text-sm ${darkMode ? 'text-gray-300' : 'text-gray-500'}`}>{submission.company || 'N/A'}</td>
+                      <td className={`px-6 py-4 whitespace-nowrap text-sm ${darkMode ? 'text-gray-300' : 'text-gray-500'}`}>{new Date(submission.submittedAt).toLocaleDateString()}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -583,7 +600,7 @@ export const AdminPanel: React.FC = () => {
               {submissions.length === 0 && (
                 <div className="text-center py-12">
                   <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500">No submissions yet</p>
+                  <p className={`text-gray-500 ${darkMode ? 'text-gray-400' : ''}`}>No submissions yet</p>
                 </div>
               )}
             </div>
@@ -592,38 +609,33 @@ export const AdminPanel: React.FC = () => {
 
         {activeTab === 'config' && (
           <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-medium text-gray-900">Server Configuration</h3>
+            <div className={`${darkMode ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-900'} rounded-lg shadow`}>
+              <div className={`px-6 py-4 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}> 
+                <h3 className={`text-lg font-medium ${darkMode ? 'text-gray-100' : 'text-gray-900'}`}>Server Configuration</h3>
               </div>
               <div className="p-6">
                 <dl className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
                   <div>
-                    <dt className="text-sm font-medium text-gray-500">Port</dt>
-                    <dd className="mt-1 text-sm text-gray-900">{config?.server.port}</dd>
+                    <dt className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Port</dt>
+                    <dd className={`mt-1 text-sm ${darkMode ? 'text-gray-100' : 'text-gray-900'}`}>{config?.server.port}</dd>
                   </div>
                   <div>
-                    <dt className="text-sm font-medium text-gray-500">Environment</dt>
-                    <dd className="mt-1 text-sm text-gray-900">{config?.server.environment}</dd>
+                    <dt className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Environment</dt>
+                    <dd className={`mt-1 text-sm ${darkMode ? 'text-gray-100' : 'text-gray-900'}`}>{config?.server.environment}</dd>
                   </div>
                 </dl>
               </div>
             </div>
-
             {/* Editable .env section */}
             <EnvEditor />
-
-            <div className="bg-white rounded-lg shadow">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-medium text-gray-900">Environment Setup</h3>
+            <div className={`${darkMode ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-900'} rounded-lg shadow`}>
+              <div className={`px-6 py-4 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}> 
+                <h3 className={`text-lg font-medium ${darkMode ? 'text-gray-100' : 'text-gray-900'}`}>Environment Setup</h3>
               </div>
               <div className="p-6">
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="text-sm text-gray-600 mb-4">
-                    To configure the destinations, create a <code className="bg-gray-200 px-2 py-1 rounded">.env</code> file 
-                    in your project root with the following variables:
-                  </p>
-                  <pre className="text-xs bg-gray-800 text-green-400 p-4 rounded overflow-x-auto">
+                <div className={`${darkMode ? 'bg-gray-900 text-green-300' : 'bg-gray-50 text-green-400'} rounded-lg p-4`}>
+                  <p className={`text-sm mb-4 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>To configure the destinations, create a <code className={`${darkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-200 text-gray-900'} px-2 py-1 rounded`}>.env</code> file in your project root with the following variables:</p>
+                  <pre className={`text-xs p-4 rounded overflow-x-auto ${darkMode ? 'bg-gray-800 text-green-300' : 'bg-gray-800 text-green-400'}`}>
                     {`# Server Configuration
 PORT=3001
 
@@ -659,9 +671,9 @@ COOKIE_SECRET=yourcookiesecret`}
 
         {activeTab === 'guide' && (
           <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-2xl font-bold mb-4 text-purple-700">Admin Features Guide</h2>
-              <ul className="list-disc pl-6 space-y-4 text-gray-800">
+            <div className={`${darkMode ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-900'} rounded-lg shadow p-6`}>
+              <h2 className={`text-2xl font-bold mb-4 ${darkMode ? 'text-purple-300' : 'text-purple-700'}`}>Admin Features Guide</h2>
+              <ul className={`list-disc pl-6 space-y-4 ${darkMode ? 'text-gray-200' : 'text-gray-800'}`}>
                 <li>
                   <strong>View Overview:</strong>
                   <p className="text-sm mt-1">See a summary of total submissions, number of form questions, and server status at a glance.</p>
@@ -711,13 +723,37 @@ COOKIE_SECRET=yourcookiesecret`}
                   </ul>
                 </li>
               </ul>
-              <div className="mt-8 text-sm text-gray-600">
+              <div className={`mt-8 text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                 <strong>Tip:</strong> All changes you make as an admin are instantly reflected for users filling out the form. Use the navigation tabs above to explore each feature!
               </div>
             </div>
           </div>
         )}
+
+        {activeTab === 'whatsnew' && (
+          <div className="space-y-6">
+            <div className={`${darkMode ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-900'} rounded-lg shadow p-8 max-w-3xl mx-auto`}>
+              <h2 className="text-2xl font-bold mb-4 flex items-center gap-2"><Sparkles className="w-6 h-6 text-purple-500" /> What's New</h2>
+              <ul className="list-disc pl-6 space-y-3 text-lg">
+                <li><strong>Admin Panel:</strong> Secure login/logout, protected endpoints, and robust error handling.</li>
+                <li><strong>Dark Mode:</strong> Full dark mode support for all admin and user UI, including EnvEditor and footer.</li>
+                <li><strong>Form Builder:</strong> Add, edit, delete, and reorder questions. New question types and options input.</li>
+                <li><strong>Themes:</strong> Instantly preview and switch between beautiful form themes.</li>
+                <li><strong>EnvEditor:</strong> Edit your <code>.env</code> file directly from the admin panel, with dark mode support.</li>
+                <li><strong>Guide Tab:</strong> In-app guide for all admin features and actions.</li>
+                <li><strong>Copyright Footer:</strong> Footer adapts to theme and always stays visible.</li>
+                <li><strong>API URL Config:</strong> Frontend now uses <code>VITE_SERVER_URL</code> and <code>VITE_SERVER_HTTPS</code> from <code>.env</code> for backend calls.</li>
+                <li><strong>Improved Error Feedback:</strong> Clear error messages and feedback for failed API calls and submissions.</li>
+              </ul>
+              <div className="mt-6 text-sm text-gray-500">Last updated: June 2025</div>
+            </div>
+          </div>
+        )}
       </div>
+      {/* Footer */}
+      <footer className={`w-full py-4 mt-12 text-center text-xs ${darkMode ? 'bg-gray-900 text-gray-500 border-t border-gray-700' : 'bg-gray-50 text-gray-500 border-t border-gray-200'}`}>
+        &copy; {new Date().getFullYear()} Donrskbb. All rights reserved.
+      </footer>
 
       {/* Question Modal */}
       {showQuestionModal && editingQuestion && (
@@ -814,11 +850,21 @@ const EnvEditor: React.FC = () => {
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
+
+  // Detect dark mode on mount and when it changes
+  useEffect(() => {
+    const checkDark = () => setDarkMode(document.documentElement.classList.contains('dark'));
+    checkDark();
+    const observer = new MutationObserver(checkDark);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     if (!editing) {
       setLoading(true);
-      fetch('http://localhost:3001/api/config/env', { credentials: 'include' })
+      apiFetch('/api/config/env', { credentials: 'include' })
         .then(res => res.json())
         .then(data => {
           setEnvContent(data.content || '');
@@ -835,7 +881,7 @@ const EnvEditor: React.FC = () => {
     setLoading(true);
     setError(null);
     setSuccess(false);
-    const res = await fetch('http://localhost:3001/api/config/env', {
+    const res = await apiFetch('/api/config/env', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -852,25 +898,25 @@ const EnvEditor: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow p-6 my-4 text-center text-gray-500">Loading .env file...</div>
+      <div className={`${darkMode ? 'bg-gray-800 text-gray-200' : 'bg-white text-gray-500'} rounded-lg shadow p-6 my-4 text-center`}>Loading .env file...</div>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg shadow p-6 my-4">
+    <div className={`${darkMode ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-900'} rounded-lg shadow p-6 my-4`}>
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-lg font-medium text-gray-900">Edit .env File</h3>
+        <h3 className={`text-lg font-medium ${darkMode ? 'text-gray-100' : 'text-gray-900'}`}>Edit .env File</h3>
         {!editing && (
           <button
-            className="bg-purple-600 text-white px-4 py-1 rounded hover:bg-purple-700"
+            className={`px-4 py-1 rounded transition-colors ${darkMode ? 'bg-purple-700 text-white hover:bg-purple-600' : 'bg-purple-600 text-white hover:bg-purple-700'}`}
             onClick={() => setEditing(true)}
           >Edit</button>
         )}
       </div>
       {error && <div className="text-red-500 mb-2">{error}</div>}
-      {success && <div className="text-green-600 mb-2">.env file saved successfully!</div>}
+      {success && <div className="text-green-500 mb-2">.env file saved successfully!</div>}
       <textarea
-        className="w-full h-64 border rounded p-2 font-mono text-xs bg-gray-50"
+        className={`w-full h-64 border rounded p-2 font-mono text-xs transition-colors ${darkMode ? 'bg-gray-900 text-gray-100 border-gray-700 placeholder-gray-400' : 'bg-gray-50 text-gray-900 border-gray-300 placeholder-gray-400'}`}
         value={envContent}
         onChange={e => setEnvContent(e.target.value)}
         disabled={!editing}
@@ -878,12 +924,12 @@ const EnvEditor: React.FC = () => {
       {editing && (
         <div className="flex gap-2 mt-2">
           <button
-            className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
+            className={`px-4 py-2 rounded transition-colors ${darkMode ? 'bg-purple-700 text-white hover:bg-purple-600' : 'bg-purple-600 text-white hover:bg-purple-700'}`}
             onClick={handleSave}
             disabled={loading}
           >Save</button>
           <button
-            className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400"
+            className={`px-4 py-2 rounded transition-colors ${darkMode ? 'bg-gray-700 text-gray-100 hover:bg-gray-600' : 'bg-gray-300 text-gray-800 hover:bg-gray-400'}`}
             onClick={() => setEditing(false)}
             disabled={loading}
           >Cancel</button>
