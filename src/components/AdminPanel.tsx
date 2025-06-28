@@ -214,9 +214,11 @@ export const AdminPanel: React.FC = () => {
             { id: 'themes', label: 'Themes', icon: Palette },
             { id: 'submissions', label: 'Submissions', icon: Users },
             { id: 'config', label: 'Configuration', icon: Database },
+            { id: 'guide', label: 'Guide', icon: Eye },
           ].map(({ id, label, icon: Icon }) => (
             <button
               key={id}
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               onClick={() => setActiveTab(id as any)}
               className={`flex items-center px-4 py-2 border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === id
@@ -368,11 +370,7 @@ export const AdminPanel: React.FC = () => {
           </div>
         )}
 
-        {/* Turned themes off */}
-        {/* Turned submissions off */}
-        {/* Turned config off */}
-
-                {activeTab === 'themes' && (
+        {activeTab === 'themes' && (
           <div className="space-y-6">
             <div className="bg-white rounded-lg shadow">
               <div className="px-6 py-4 border-b border-gray-200">
@@ -408,7 +406,7 @@ export const AdminPanel: React.FC = () => {
           </div>
         )}
 
-                {activeTab === 'submissions' && (
+        {activeTab === 'submissions' && (
           <div className="bg-white rounded-lg shadow">
             <div className="px-6 py-4 border-b border-gray-200">
               <h3 className="text-lg font-medium text-gray-900">Recent Submissions</h3>
@@ -497,21 +495,21 @@ export const AdminPanel: React.FC = () => {
                     in your project root with the following variables:
                   </p>
                   <pre className="text-xs bg-gray-800 text-green-400 p-4 rounded overflow-x-auto">
-{`# Discord Configuration
-DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/your-webhook-url
+                    {`# Discord Configuration
+                    DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/your-webhook-url
 
-# MongoDB Configuration  
-MONGODB_URI=mongodb://localhost:27017/typeform-creator
+                    # MongoDB Configuration  
+                    MONGODB_URI=mongodb://localhost:27017/typeform-creator
 
-# Email Configuration
-EMAIL_HOST=smtp.gmail.com
-EMAIL_PORT=587
-EMAIL_USER=your-email@gmail.com
-EMAIL_PASS=your-app-password
-EMAIL_TO=admin@yourcompany.com
+                    # Email Configuration
+                    EMAIL_HOST=smtp.gmail.com
+                    EMAIL_PORT=587
+                    EMAIL_USER=your-email@gmail.com
+                    EMAIL_PASS=your-app-password
+                    EMAIL_TO=admin@yourcompany.com
 
-# Enable destinations (comma-separated)
-ENABLED_DESTINATIONS=discord,mongodb,email`}
+                    # Enable destinations (comma-separated)
+                    ENABLED_DESTINATIONS=discord,mongodb,email`}
                   </pre>
                 </div>
               </div>
@@ -553,8 +551,9 @@ ENABLED_DESTINATIONS=discord,mongodb,email`}
               <div className="space-x-2">
                 <button
                   onClick={saveQuestion}
-                  className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
+                  className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 flex items-center gap-2"
                 >
+                  <Save className="w-4 h-4" />
                   Save
                 </button>
                 <button
@@ -564,6 +563,7 @@ ENABLED_DESTINATIONS=discord,mongodb,email`}
                   }}
                   className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400"
                 >
+                  <X className="w-4 h-4" />
                   Cancel
                 </button>
               </div>
