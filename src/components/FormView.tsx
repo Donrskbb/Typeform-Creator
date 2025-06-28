@@ -180,16 +180,18 @@ export const FormView: React.FC = () => {
                 <div className={`${theme.cardBackground} rounded-lg p-6 text-left`}>
                   <h3 className="text-lg font-semibold mb-4">Submission Status:</h3>
                   <div className="space-y-2">
-                    {Object.entries(submissionResult.destinations as Record<string, { success: boolean }>).map(
-                      ([dest, status]) => (
-                        <div key={dest} className="flex items-center justify-between">
-                          <span className="capitalize">{dest}:</span>
-                          <span className={status.success ? 'text-green-400' : 'text-red-400'}>
-                            {status.success ? '✓ Success' : '✗ Failed'}
+                    {(() => {
+                      // Show only one status: success if any destination succeeded, else failed
+                      const statuses = Object.values(submissionResult.destinations as Record<string, { success: boolean }>);
+                      const anySuccess = statuses.some(s => s.success);
+                      return (
+                        <div className="flex items-center justify-between">
+                          <span className={anySuccess ? 'text-green-400' : 'text-red-400'}>
+                            {anySuccess ? '✓ Success' : '✗ Failed'}
                           </span>
                         </div>
-                      )
-                    )}
+                      );
+                    })()}
                   </div>
                 </div>
               )}
