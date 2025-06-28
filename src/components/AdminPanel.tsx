@@ -758,9 +758,9 @@ COOKIE_SECRET=yourcookiesecret`}
       {/* Question Modal */}
       {showQuestionModal && editingQuestion && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white p-6 rounded-lg w-full max-w-xl shadow-lg">
-            <h2 className="text-xl font-semibold mb-4">Edit Question</h2>
-            <label className="block mb-2 text-sm font-medium text-gray-700">Type</label>
+          <div className={`${darkMode ? 'bg-gray-900 text-gray-100' : 'bg-white text-gray-900'} p-6 rounded-lg w-full max-w-xl shadow-lg border ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}> 
+            <h2 className={`text-xl font-semibold mb-4 ${darkMode ? 'text-gray-100' : 'text-gray-900'}`}>Edit Question</h2>
+            <label className={`block mb-2 text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Type</label>
             <select
               value={editingQuestion.type}
               onChange={e => {
@@ -771,30 +771,30 @@ COOKIE_SECRET=yourcookiesecret`}
                   options: type === 'select' ? ['Option 1', 'Option 2'] : undefined,
                 });
               }}
-              className="w-full p-2 border rounded mb-4"
+              className={`w-full p-2 border rounded mb-4 transition-colors ${darkMode ? 'bg-gray-800 text-gray-100 border-gray-700 placeholder-gray-400' : 'bg-white text-gray-900 border-gray-300 placeholder-gray-400'}`}
             >
               <option value="text">Text</option>
               <option value="email">Email</option>
               <option value="select">Select</option>
               <option value="multiline">Multiline</option>
             </select>
-            <label className="block mb-2 text-sm font-medium text-gray-700">Question</label>
+            <label className={`block mb-2 text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Question</label>
             <input
               type="text"
               value={editingQuestion.question}
               onChange={e => setEditingQuestion({ ...editingQuestion, question: e.target.value })}
-              className="w-full p-2 border rounded mb-4"
+              className={`w-full p-2 border rounded mb-4 transition-colors ${darkMode ? 'bg-gray-800 text-gray-100 border-gray-700 placeholder-gray-400' : 'bg-white text-gray-900 border-gray-300 placeholder-gray-400'}`}
             />
-            <label className="block mb-2 text-sm font-medium text-gray-700">Placeholder</label>
+            <label className={`block mb-2 text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Placeholder</label>
             <input
               type="text"
               value={editingQuestion.placeholder}
               onChange={e => setEditingQuestion({ ...editingQuestion, placeholder: e.target.value })}
-              className="w-full p-2 border rounded mb-4"
+              className={`w-full p-2 border rounded mb-4 transition-colors ${darkMode ? 'bg-gray-800 text-gray-100 border-gray-700 placeholder-gray-400' : 'bg-white text-gray-900 border-gray-300 placeholder-gray-400'}`}
             />
             {editingQuestion.type === 'select' && (
               <>
-                <label className="block mb-2 text-sm font-medium text-gray-700">Options (comma separated)</label>
+                <label className={`block mb-2 text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Options (comma separated)</label>
                 <input
                   type="text"
                   value={editingQuestion.options?.join(', ') || ''}
@@ -802,17 +802,17 @@ COOKIE_SECRET=yourcookiesecret`}
                     ...editingQuestion,
                     options: e.target.value.split(',').map(opt => opt.trim()).filter(Boolean),
                   })}
-                  className="w-full p-2 border rounded mb-4"
+                  className={`w-full p-2 border rounded mb-4 transition-colors ${darkMode ? 'bg-gray-800 text-gray-100 border-gray-700 placeholder-gray-400' : 'bg-white text-gray-900 border-gray-300 placeholder-gray-400'}`}
                 />
               </>
             )}
             <div className="flex items-center justify-between">
-              <label className="flex items-center">
+              <label className={`flex items-center ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}> 
                 <input
                   type="checkbox"
                   checked={editingQuestion.required}
                   onChange={e => setEditingQuestion({ ...editingQuestion, required: e.target.checked })}
-                  className="mr-2"
+                  className={`mr-2 ${darkMode ? 'accent-purple-600' : ''}`}
                 />
                 Required
               </label>
@@ -820,7 +820,7 @@ COOKIE_SECRET=yourcookiesecret`}
                 <button
                   onClick={saveQuestion}
                   disabled={!editingQuestion.question || (editingQuestion.type === 'select' && (!editingQuestion.options || editingQuestion.options.length === 0))}
-                  className={`bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 flex items-center gap-2 ${(!editingQuestion.question || (editingQuestion.type === 'select' && (!editingQuestion.options || editingQuestion.options.length === 0))) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className={`px-4 py-2 rounded flex items-center gap-2 transition-colors ${(!editingQuestion.question || (editingQuestion.type === 'select' && (!editingQuestion.options || editingQuestion.options.length === 0))) ? 'opacity-50 cursor-not-allowed' : ''} ${darkMode ? 'bg-purple-700 text-white hover:bg-purple-600' : 'bg-purple-600 text-white hover:bg-purple-700'}`}
                 >
                   <Save className="w-4 h-4" />
                   Save
@@ -830,7 +830,7 @@ COOKIE_SECRET=yourcookiesecret`}
                     setEditingQuestion(null);
                     setShowQuestionModal(false);
                   }}
-                  className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400"
+                  className={`px-4 py-2 rounded flex items-center gap-2 transition-colors ${darkMode ? 'bg-gray-700 text-gray-100 hover:bg-gray-600' : 'bg-gray-300 text-gray-800 hover:bg-gray-400'}`}
                 >
                   <X className="w-4 h-4" />
                   Cancel
